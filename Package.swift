@@ -18,6 +18,7 @@ let package = Package(
             targets: ["CloudKitKeyValueStore"]),
     ],
     dependencies: [
+        .package(url: "https://github.com/elegantchaos/KeyValueStore.git", from: "1.2.0"),
         .package(url: "https://github.com/elegantchaos/XCTestExtensions.git", from: "1.2.0")
     ],
     targets: [

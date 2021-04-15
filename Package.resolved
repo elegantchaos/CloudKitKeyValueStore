@@ -2,6 +2,15 @@
   "object": {
     "pins": [
       {
+        "package": "KeyValueStore",
+        "repositoryURL": "https://github.com/elegantchaos/KeyValueStore.git",
+        "state": {
+          "branch": null,
+          "revision": "78c90cebc4875082f1f6deeaeb33a1dbd0c49d8c",
+          "version": "1.2.0"
+        }
+      },
+      {
         "package": "XCTestExtensions",
         "repositoryURL": "https://github.com/elegantchaos/XCTestExtensions.git",
         "state": {
