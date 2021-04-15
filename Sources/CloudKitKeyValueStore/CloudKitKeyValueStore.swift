@@ -7,15 +7,14 @@ import CloudKit
 import Combine
 import KeyValueStore
 
-
-class CloudKitKeyValueStore: ObservableObject, KeyValueStore {
+public class CloudKitKeyValueStore: ObservableObject {
     let container: CKContainer
     let record: CKRecord
     var watcher: AnyCancellable?
     @Published var needsSave = false
     
-    init(identifier: String) {
-        container = CKContainer(identifier: identifier)
+    public init(identifier: String) {
+        container = CKContainer.default()
         let id = CKRecord.ID(recordName: "values")
         record = CKRecord(recordType: "Values", recordID: id)
         watcher = objectWillChange
@@ -29,32 +28,52 @@ class CloudKitKeyValueStore: ObservableObject, KeyValueStore {
                 }
             }
     }
+
+    func scheduleSave() {
+        needsSave = true
+    }
     
-    func has(key: String) -> Bool {
+    func save() {
+        print("saving")
+        let database = container.privateCloudDatabase
+        database.save(record) { record, error in
+            if let error = error {
+                print("Error: \(error)")
+            } else if let record = record {
+                print("saved \(record)")
+            }
+        }
+    }
+
+}
+
+extension CloudKitKeyValueStore: KeyValueStore {
+    
+    public func has(key: String) -> Bool {
         record[key] != nil
     }
     
-    func object(forKey key: String) -> Any? {
+    public func object(forKey key: String) -> Any? {
         record[key]
     }
     
-    func string(forKey key: String) -> String? {
+    public func string(forKey key: String) -> String? {
         record[key] as? String
     }
     
-    func bool(forKey key: String) -> Bool {
+    public func bool(forKey key: String) -> Bool {
         (record[key] as? Bool) ?? false
     }
     
-    func integer(forKey key: String) -> Int {
+    public func integer(forKey key: String) -> Int {
         (record[key] as? Int) ?? 0
     }
     
-    func double(forKey key: String) -> Double {
+    public func double(forKey key: String) -> Double {
         (record[key] as? Double) ?? 0
     }
     
-    func array(forKey key: String) -> [Any]? {
+    public func array(forKey key: String) -> [Any]? {
         if let data = record[key] as? Data {
             do {
                 let coder = try NSKeyedUnarchiver(forReadingFrom: data)
@@ -67,7 +86,7 @@ class CloudKitKeyValueStore: ObservableObject, KeyValueStore {
         return nil
     }
     
-    func dictionary(forKey key: String) -> [String:Any]? {
+    public func dictionary(forKey key: String) -> [String:Any]? {
         if let data = record[key] as? Data {
             do {
                 let coder = try NSKeyedUnarchiver(forReadingFrom: data)
@@ -80,59 +99,50 @@ class CloudKitKeyValueStore: ObservableObject, KeyValueStore {
         return nil
     }
     
-    func data(forKey key: String) -> Data? {
+    public func data(forKey key: String) -> Data? {
         record[key] as? Data
     }
     
-    func set(_ string: String?, forKey key: String) {
+    public func set(_ string: String?, forKey key: String) {
         record[key] = string
         scheduleSave()
     }
     
-    func set(_ bool: Bool, forKey key: String) {
+    public func set(_ bool: Bool, forKey key: String) {
         record[key] = bool
         scheduleSave()
     }
     
-    func set(_ double: Double, forKey key: String) {
+    public func set(_ double: Double, forKey key: String) {
         record[key] = double
         scheduleSave()
     }
     
-    func set(_ integer: Int, forKey key: String) {
+    public func set(_ integer: Int, forKey key: String) {
         record[key] = integer
         scheduleSave()
     }
     
-    func set(_ array: [Any]?, forKey key: String) {
+    public func set(_ array: [Any]?, forKey key: String) {
         let coder = NSKeyedArchiver(requiringSecureCoding: true)
         coder.encode(array)
         record[key] = coder.encodedData
         scheduleSave()
     }
     
-    func set(_ dictionary: [String : Any]?, forKey key: String) {
+    public func set(_ dictionary: [String : Any]?, forKey key: String) {
         let coder = NSKeyedArchiver(requiringSecureCoding: true)
         coder.encode(dictionary)
         record[key] = coder.encodedData
         scheduleSave()
     }
     
-    func set(_ data: Data?, forKey key: String) {
+    public func set(_ data: Data?, forKey key: String) {
         record[key] = data
         scheduleSave()
     }
     
-    func remove(key: String) {
+    public func remove(key: String) {
         record[key] = nil
-    }
-    
-    func scheduleSave() {
-        needsSave = true
-    }
-    
-    func save() {
-        
-        print("saving")
     }
 }

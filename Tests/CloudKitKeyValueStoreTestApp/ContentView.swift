@@ -1,21 +1,32 @@
-//
-//  ContentView.swift
-//  CloudKitKeyValueStoreTest
-//
-//  Created by Sam Developer on 15/04/2021.
-//
+// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+//  Created by Sam Deane on 15/04/21.
+//  All code (c) 2021 - present day, Elegant Chaos Limited.
+// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 import SwiftUI
 
 struct ContentView: View {
+    let tests: TestSession
+    
     var body: some View {
-        Text("Hello, world!")
-            .padding()
+        VStack {
+            Text("Hello, world!")
+            Button(action: handleTest) {
+                Text("Run Tests")
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+    }
+    
+    func handleTest() {
+        tests.test()
     }
 }
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+        let tests = TestSession()
+        ContentView(tests: tests)
     }
 }
