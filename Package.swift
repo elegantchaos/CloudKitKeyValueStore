@@ -10,7 +10,7 @@ import PackageDescription
 let package = Package(
     name: "CloudKitKeyValueStore",
     platforms: [
-        .macOS(.v10_13), .iOS(.v13), .tvOS(.v13), .watchOS(.v6)
+        .macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6)
     ],
     products: [
         .library(
@@ -19,12 +19,12 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/elegantchaos/KeyValueStore.git", from: "1.2.0"),
-        .package(url: "https://github.com/elegantchaos/XCTestExtensions.git", from: "1.2.0")
+        .package(url: "https://github.com/elegantchaos/XCTestExtensions.git", from: "1.3.2")
     ],
     targets: [
         .target(
             name: "CloudKitKeyValueStore",
-            dependencies: []),
+            dependencies: ["KeyValueStore"]),
         .testTarget(
             name: "CloudKitKeyValueStoreTests",
             dependencies: ["CloudKitKeyValueStore", "XCTestExtensions"]),

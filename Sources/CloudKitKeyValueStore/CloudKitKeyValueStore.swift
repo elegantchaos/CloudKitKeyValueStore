@@ -4,18 +4,32 @@
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 import CloudKit
-import Foundation
+import Combine
+import KeyValueStore
 
-class CloudKitKeyValueStore: KeyValueStore {
+
+class CloudKitKeyValueStore: ObservableObject, KeyValueStore {
     let container: CKContainer
     let record: CKRecord
-
+    var watcher: AnyCancellable?
+    @Published var needsSave = false
+    
     init(identifier: String) {
         container = CKContainer(identifier: identifier)
         let id = CKRecord.ID(recordName: "values")
         record = CKRecord(recordType: "Values", recordID: id)
+        watcher = objectWillChange
+            .debounce(for: 1.0, scheduler: RunLoop.main)
+            .sink {
+                DispatchQueue.main.async { [self] in
+                    if needsSave {
+                        save()
+                        needsSave = false
+                    }
+                }
+            }
     }
-
+    
     func has(key: String) -> Bool {
         record[key] != nil
     }
@@ -72,37 +86,53 @@ class CloudKitKeyValueStore: KeyValueStore {
     
     func set(_ string: String?, forKey key: String) {
         record[key] = string
+        scheduleSave()
     }
     
     func set(_ bool: Bool, forKey key: String) {
         record[key] = bool
+        scheduleSave()
     }
     
     func set(_ double: Double, forKey key: String) {
         record[key] = double
+        scheduleSave()
     }
     
     func set(_ integer: Int, forKey key: String) {
         record[key] = integer
+        scheduleSave()
     }
     
     func set(_ array: [Any]?, forKey key: String) {
         let coder = NSKeyedArchiver(requiringSecureCoding: true)
         coder.encode(array)
         record[key] = coder.encodedData
+        scheduleSave()
     }
     
     func set(_ dictionary: [String : Any]?, forKey key: String) {
         let coder = NSKeyedArchiver(requiringSecureCoding: true)
         coder.encode(dictionary)
         record[key] = coder.encodedData
+        scheduleSave()
     }
     
     func set(_ data: Data?, forKey key: String) {
         record[key] = data
+        scheduleSave()
     }
     
     func remove(key: String) {
         record[key] = nil
+    }
+    
+    func scheduleSave() {
+        needsSave = true
+    }
+    
+    func save() {
+        
+        print("saving")
     }
 }
