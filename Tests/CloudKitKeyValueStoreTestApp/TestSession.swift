@@ -7,12 +7,14 @@ import CloudKitKeyValueStore
 import Foundation
 
 class TestSession {
-    let store = CloudKitKeyValueStore(identifier: "com.elegantchaos.cloudkitkeyvaluestore.test")
+    let store = CloudKitKeyValueStore(identifier: "iCloud.com.elegantchaos.cloudkitkeyvaluestore.test")
     
     init() {
     }
     
     func test() {
+        print(store.bool(forKey: "bool"))
+        
         store.set(true, forKey: "bool")
         store.set("string", forKey: "string")
     }

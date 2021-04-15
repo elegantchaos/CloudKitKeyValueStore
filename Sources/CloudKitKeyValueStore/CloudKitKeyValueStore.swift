@@ -9,38 +9,44 @@ import KeyValueStore
 
 public class CloudKitKeyValueStore: ObservableObject {
     let container: CKContainer
-    let record: CKRecord
+    let database: CKDatabase
     var watcher: AnyCancellable?
-    @Published var needsSave = false
+    @Published var needsSave: [CKRecord] = []
     
     public init(identifier: String) {
-        container = CKContainer.default()
-        let id = CKRecord.ID(recordName: "values")
-        record = CKRecord(recordType: "Values", recordID: id)
+        // TODO: prefetch and/or cache records
+        let container = CKContainer(identifier: identifier)
+        
+        self.container = container
+        self.database = container.privateCloudDatabase
+        
         watcher = objectWillChange
             .debounce(for: 1.0, scheduler: RunLoop.main)
             .sink {
                 DispatchQueue.main.async { [self] in
-                    if needsSave {
+                    if !needsSave.isEmpty {
                         save()
-                        needsSave = false
                     }
                 }
             }
     }
 
-    func scheduleSave() {
-        needsSave = true
+    func scheduleSave(record: CKRecord) {
+        needsSave.append(record)
     }
     
     func save() {
         print("saving")
         let database = container.privateCloudDatabase
-        database.save(record) { record, error in
-            if let error = error {
-                print("Error: \(error)")
-            } else if let record = record {
-                print("saved \(record)")
+        let saveList = needsSave
+        needsSave = []
+        for record in saveList {
+            database.save(record) { record, error in
+                if let error = error {
+                    print("Error: \(error)")
+                } else if let record = record {
+                    print("saved \(record)")
+                }
             }
         }
     }
@@ -49,100 +55,114 @@ public class CloudKitKeyValueStore: ObservableObject {
 
 extension CloudKitKeyValueStore: KeyValueStore {
     
+    func fetchRecord(forKey key: String) -> CKRecord? {
+        var result: CKRecord? = nil
+        let sem = DispatchSemaphore(value: 0)
+        database.fetch(withRecordID: CKRecord.ID(recordName: key)) { record, error in
+            sem.signal()
+            result = record
+        }
+        
+        sem.wait()
+        return result
+    }
+    
     public func has(key: String) -> Bool {
-        record[key] != nil
+        fetchRecord(forKey: key) != nil
     }
     
     public func object(forKey key: String) -> Any? {
-        record[key]
+        return nil
     }
     
     public func string(forKey key: String) -> String? {
-        record[key] as? String
+        return nil
     }
     
     public func bool(forKey key: String) -> Bool {
-        (record[key] as? Bool) ?? false
+        if let record = fetchRecord(forKey: key), let data = record["data"] as? Data {
+            let coder = JSONDecoder()
+            do {
+                return try coder.decode(Bool.self, from: data)
+            } catch {
+                
+            }
+        }
+        return false
     }
     
     public func integer(forKey key: String) -> Int {
-        (record[key] as? Int) ?? 0
+        return 0
     }
     
     public func double(forKey key: String) -> Double {
-        (record[key] as? Double) ?? 0
+        return 0
     }
     
     public func array(forKey key: String) -> [Any]? {
-        if let data = record[key] as? Data {
-            do {
-                let coder = try NSKeyedUnarchiver(forReadingFrom: data)
-                let array = NSArray(coder: coder) as? [Any]
-                return array
-            } catch {
-                // report error?
-            }
-        }
         return nil
     }
     
     public func dictionary(forKey key: String) -> [String:Any]? {
-        if let data = record[key] as? Data {
-            do {
-                let coder = try NSKeyedUnarchiver(forReadingFrom: data)
-                let dictionary = NSDictionary(coder: coder) as? [String:Any]
-                return dictionary
-            } catch {
-                // report error?
-            }
-        }
         return nil
     }
     
     public func data(forKey key: String) -> Data? {
-        record[key] as? Data
+        return nil
+//        record[key] as? Data
     }
     
     public func set(_ string: String?, forKey key: String) {
-        record[key] = string
-        scheduleSave()
+//        record[key] = string
+//        scheduleSave()
     }
     
     public func set(_ bool: Bool, forKey key: String) {
-        record[key] = bool
-        scheduleSave()
+//        record[key] = bool
+        let encoder = JSONEncoder()
+        do {
+            let data = try encoder.encode(bool)
+            let id = CKRecord.ID.init(recordName: key)
+            database.fetch(withRecordID: id) { found,error in
+                let record = found ?? CKRecord(recordType: "Value", recordID: id)
+                record["data"] = data
+                self.scheduleSave(record: record)
+            }
+        } catch {
+            print("coding error \(error)")
+        }
     }
     
     public func set(_ double: Double, forKey key: String) {
-        record[key] = double
-        scheduleSave()
+//        record[key] = double
+//        scheduleSave()
     }
     
     public func set(_ integer: Int, forKey key: String) {
-        record[key] = integer
-        scheduleSave()
+//        record[key] = integer
+        //        scheduleSave()
     }
     
     public func set(_ array: [Any]?, forKey key: String) {
         let coder = NSKeyedArchiver(requiringSecureCoding: true)
         coder.encode(array)
-        record[key] = coder.encodedData
-        scheduleSave()
+//        record[key] = coder.encodedData
+        //        scheduleSave()
     }
     
     public func set(_ dictionary: [String : Any]?, forKey key: String) {
         let coder = NSKeyedArchiver(requiringSecureCoding: true)
         coder.encode(dictionary)
-        record[key] = coder.encodedData
-        scheduleSave()
+//        record[key] = coder.encodedData
+        //        scheduleSave()
     }
     
     public func set(_ data: Data?, forKey key: String) {
-        record[key] = data
-        scheduleSave()
+//        record[key] = data
+        //        scheduleSave()
     }
     
     public func remove(key: String) {
-        record[key] = nil
+//        record[key] = nil
     }
 }
