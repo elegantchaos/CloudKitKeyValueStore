@@ -14,8 +14,13 @@ class TestSession {
     
     func test() {
         print(store.bool(forKey: "bool"))
-        
+        print(store.string(forKey: "string") ?? "<missing>")
+        print(store.integer(forKey: "integer"))
+        print(store.double(forKey: "double"))
+
         store.set(true, forKey: "bool")
         store.set("string", forKey: "string")
+        store.set(123, forKey: "integer")
+        store.set(123.456, forKey: "double")
     }
 }
