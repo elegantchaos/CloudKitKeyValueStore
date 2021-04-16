@@ -76,22 +76,51 @@ public class CloudKitKeyValueStore: ObservableObject {
         return record?["data"] as? Data
     }
 
-    func decodeValue(forKey key: String) -> NSValue? {
-        if let data = decodeData(forKey: key) {
+    func unarchiver(forKey key: String) -> NSKeyedUnarchiver? {
+        let data = decodeData(forKey: key)
+        if let data = data {
             do {
-                let coder = try NSKeyedUnarchiver(forReadingFrom: data)
-                return NSValue(coder: coder)
+                return try NSKeyedUnarchiver(forReadingFrom: data)
             } catch {
                 print(error)
             }
         }
-        
+
         return nil
     }
-    
-    func decodeNumber(forKey key: String) -> NSNumber? {
-        return decodeValue(forKey: key) as? NSNumber
+ 
+    func decodeObject(forKey key: String) -> Any? {
+        let data = decodeData(forKey: key)
+        if let data = data {
+            do {
+                return try NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(data)
+            } catch {
+                print(error)
+            }
+        }
+
+        return nil
     }
+//    func decodeValue(forKey key: String) -> NSValue? {
+//        if let data = decodeData(forKey: key) {
+//            do {
+//                print(data.count)
+//                let coder = try NSKeyedUnarchiver(forReadingFrom: data)
+//                let value = NSValue(coder: coder.)
+//                print(value)
+//                return value
+//            } catch {
+//                print(error)
+//            }
+//        }
+//
+//        print("was nil")
+//        return nil
+//    }
+//
+//    func decodeNumber(forKey key: String) -> NSNumber? {
+//        return decodeValue(forKey: key) as? NSNumber
+//    }
     
     func encodeData(_ data: Data, forKey key: String) {
         let id = CKRecord.ID.init(recordName: key)
@@ -103,16 +132,19 @@ public class CloudKitKeyValueStore: ObservableObject {
     }
     
     func encodeNumber(_ number: NSNumber, forKey key: String) {
-        let archiver = NSKeyedArchiver(requiringSecureCoding: true)
+        let archiver = NSKeyedArchiver(requiringSecureCoding: false)
         archiver.encode(number)
         encodeData(archiver.encodedData, forKey: key)
     }
     
     func encodeObject(_ object: Any?, forKey key: String) {
         if let object = object {
-            let archiver = NSKeyedArchiver(requiringSecureCoding: true)
-            archiver.encode(object)
-            encodeData(archiver.encodedData, forKey: key)
+            do {
+                let data = try NSKeyedArchiver.archivedData(withRootObject: object, requiringSecureCoding: false)
+                encodeData(data, forKey: key)
+            } catch {
+                print(error)
+            }
         } else {
             remove(key: key)
         }
@@ -149,53 +181,27 @@ extension CloudKitKeyValueStore: KeyValueStore {
     }
     
     public func string(forKey key: String) -> String? {
-        guard let data = decodeData(forKey: key) else { return nil }
-        do {
-            let coder = try NSKeyedUnarchiver(forReadingFrom: data)
-            if let string = NSString(coder: coder) {
-                return string as String
-            }
-        } catch {
-            print(error)
-        }
-        
-        return nil
+        return unarchiver(forKey: key)?.decodeObject(forKey: "data") as? String
     }
     
     public func bool(forKey key: String) -> Bool {
-        return decodeNumber(forKey: key)?.boolValue ?? false
+        return unarchiver(forKey: key)?.decodeBool(forKey: "data") ?? false
     }
     
     public func integer(forKey key: String) -> Int {
-        return decodeNumber(forKey: key)?.intValue ?? 0
+        return unarchiver(forKey: key)?.decodeInteger(forKey: "data") ?? 0
     }
     
     public func double(forKey key: String) -> Double {
-        return decodeNumber(forKey: key)?.doubleValue ?? 0.0
+        return unarchiver(forKey: key)?.decodeDouble(forKey: "data") ?? 0
     }
     
     public func array(forKey key: String) -> [Any]? {
-        guard let data = decodeData(forKey: key) else { return nil }
-        do {
-            let coder = try NSKeyedUnarchiver(forReadingFrom: data)
-            return NSArray(coder: coder) as? [Any]
-        } catch {
-            print(error)
-        }
-        
-        return nil
+        return decodeObject(forKey: key) as? [Any]
     }
     
     public func dictionary(forKey key: String) -> [String:Any]? {
-        guard let data = decodeData(forKey: key) else { return nil }
-        do {
-            let coder = try NSKeyedUnarchiver(forReadingFrom: data)
-            return NSDictionary(coder: coder) as? [String:Any]
-        } catch {
-            print(error)
-        }
-        
-        return nil
+        return unarchiver(forKey: key)?.decodeObject(forKey: "data") as? [String:Any]
     }
     
     public func data(forKey key: String) -> Data? {
@@ -203,27 +209,43 @@ extension CloudKitKeyValueStore: KeyValueStore {
     }
     
     public func set(_ string: String?, forKey key: String) {
-        encodeObject(string, forKey: key)
+        let archiver = NSKeyedArchiver(requiringSecureCoding: false)
+        archiver.encode(string, forKey: "data")
+        encodeData(archiver.encodedData, forKey: key)
     }
     
     public func set(_ bool: Bool, forKey key: String) {
-        encodeNumber(NSNumber(booleanLiteral: bool), forKey: key)
+        let archiver = NSKeyedArchiver(requiringSecureCoding: false)
+        archiver.encode(bool, forKey: "data")
+        encodeData(archiver.encodedData, forKey: key)
     }
     
     public func set(_ double: Double, forKey key: String) {
-        encodeNumber(NSNumber(floatLiteral: double), forKey: key)
+        let archiver = NSKeyedArchiver(requiringSecureCoding: false)
+        archiver.encode(double, forKey: "data")
+        encodeData(archiver.encodedData, forKey: key)
     }
     
     public func set(_ integer: Int, forKey key: String) {
-        encodeNumber(NSNumber(integerLiteral: integer), forKey: key)
+        let archiver = NSKeyedArchiver(requiringSecureCoding: false)
+        archiver.encode(integer, forKey: "data")
+        encodeData(archiver.encodedData, forKey: key)
     }
     
     public func set(_ array: [Any]?, forKey key: String) {
-        encodeObject(array, forKey: key)
+        if let array = array {
+            encodeObject(array, forKey: key)
+        } else {
+            remove(key: key)
+        }
     }
     
     public func set(_ dictionary: [String : Any]?, forKey key: String) {
-        encodeObject(dictionary, forKey: key)
+        if let dictionary = dictionary {
+            encodeObject(dictionary, forKey: key)
+        } else {
+            remove(key: key)
+        }
     }
     
     public func set(_ data: Data?, forKey key: String) {
